@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  collegeId    String   @unique
+  name         String
+  email        String   @unique
+  passwordHash String
+  phone        String?
+  role         String   @default("STUDENT") // STUDENT or ADMIN
+  orders       Order[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Canteen {
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  image       String?
+  location    String?
+  isActive    Boolean    @default(true)
+  openTime    String     @default("07:00")
+  closeTime   String     @default("22:00")
+  menuItems   MenuItem[]
+  orders      Order[]
+  createdAt   DateTime   @default(now())
+}
+
+model MenuItem {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  image       String?
+  category    String      // BREAKFAST, LUNCH, DINNER, SNACKS, BEVERAGES, DESSERTS
+  isVeg       Boolean     @default(true)
+  isAvailable Boolean     @default(true)
+  prepTime    Int         @default(10)
+  canteen     Canteen     @relation(fields: [canteenId], references: [id], onDelete: Cascade)
+  canteenId   String
+  orderItems  OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Order {
+  id             String        @id @default(cuid())
+  tokenNumber    Int
+  status         String        @default("PLACED") // PLACED, ACCEPTED, PREPARING, READY, COLLECTED, CANCELLED
+  totalAmount    Float
+  paymentId      String?
+  paymentStatus  String        @default("PENDING") // PENDING, COMPLETED, FAILED, REFUNDED
+  scheduledFor   String?       // "now" or "19:30" or ISO string
+  estimatedReady DateTime?
+  notes          String?
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  canteen        Canteen       @relation(fields: [canteenId], references: [id], onDelete: Cascade)
+  canteenId      String
+  items          OrderItem[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  quantity   Int
+  price      Float
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId    String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  menuItemId String
+}
