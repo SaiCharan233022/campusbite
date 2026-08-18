@@ -167,7 +167,7 @@ export async function GET(req: Request) {
     const search = searchParams.get('search');
     const limit = searchParams.get('limit');
 
-    let items = [];
+    let items: any[] = [];
     try {
       const where: any = {};
       if (canteenId) where.canteenId = canteenId;
