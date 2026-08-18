@@ -31,3 +31,5 @@ next-env.d.ts
 /prisma/dev.db
 /prisma/dev.db-journal
 test_api.ps1
+
+.vercel
