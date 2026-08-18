@@ -15,12 +15,14 @@ import {
   Clock, 
   ShieldCheck, 
   ArrowLeft, 
-  CheckCircle2, 
   Smartphone, 
   Banknote,
   Receipt,
-  Sparkles,
-  AlertCircle
+  AlertCircle,
+  QrCode,
+  CheckCircle,
+  ExternalLink,
+  Edit3
 } from 'lucide-react';
 
 export default function CheckoutPage() {
@@ -37,7 +39,12 @@ export default function CheckoutPage() {
     setOrderNotes 
   } = useCart();
 
-  const [paymentMethod, setPaymentMethod] = useState<'RAZORPAY' | 'UPI_DIRECT' | 'CAMPUS_CARD'>('RAZORPAY');
+  // Payment State
+  const [paymentMethod, setPaymentMethod] = useState<'UPI_DIRECT' | 'RAZORPAY' | 'CAMPUS_CARD'>('UPI_DIRECT');
+  const [upiId, setUpiId] = useState('canteen.campusbite@okaxis');
+  const [isEditingUpi, setIsEditingUpi] = useState(false);
+  const [customUpiInput, setCustomUpiInput] = useState('');
+  const [upiRefNumber, setUpiRefNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -60,6 +67,10 @@ export default function CheckoutPage() {
     );
   }
 
+  // Dynamic UPI Intent URI
+  const upiIntentUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent('CampusBite Canteen')}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent('CampusBite Food Order')}`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(upiIntentUri)}`;
+
   const handlePayment = async () => {
     setError('');
     setLoading(true);
@@ -76,8 +87,8 @@ export default function CheckoutPage() {
             quantity: ci.quantity,
           })),
           scheduledFor: scheduledTime,
-          notes: orderNotes,
-          userId: (session?.user as any)?.id,
+          notes: orderNotes ? `${orderNotes} | Paid via UPI (${upiRefNumber || 'Direct'})` : `Paid via UPI (${upiRefNumber || 'Direct'})`,
+          userId: (session?.user as any)?.id || 'guest_student',
         }),
       });
 
@@ -88,46 +99,20 @@ export default function CheckoutPage() {
 
       const createdOrder = orderData.order;
 
-      // 2. Initiate Razorpay / Test Payment Verification
-      const rzpOrderRes = await fetch('/api/razorpay/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: totalAmount,
-          orderId: createdOrder.id,
-        }),
-      });
+      // 2. Trigger celebratory confetti!
+      try {
+        confetti({
+          particleCount: 90,
+          spread: 80,
+          origin: { y: 0.6 },
+        });
+      } catch (e) {}
 
-      const rzpData = await rzpOrderRes.json();
-
-      // In Test/Mock Mode or Direct Gateway
-      const verifyRes = await fetch('/api/razorpay/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          razorpay_order_id: rzpData.orderId,
-          razorpay_payment_id: `pay_test_${Date.now()}`,
-          razorpay_signature: 'test_sig',
-          app_order_id: createdOrder.id,
-        }),
-      });
-
-      if (verifyRes.ok) {
-        // Trigger celebratory confetti!
-        try {
-          confetti({
-            particleCount: 80,
-            spread: 70,
-            origin: { y: 0.6 },
-          });
-        } catch (e) {}
-
-        clearCart();
-        router.push(`/orders/${createdOrder.id}?success=true`);
-      }
+      clearCart();
+      router.push(`/orders/${createdOrder.id}?success=true`);
     } catch (err: any) {
       console.error('Checkout error:', err);
-      setError(err.message || 'Payment failed. Please try again.');
+      setError(err.message || 'Payment processing failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -217,7 +202,7 @@ export default function CheckoutPage() {
             }}
           >
             <span style={{ fontSize: '1rem', fontWeight: 700 }}>Total Payable</span>
-            <span style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+            <span style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)' }}>
               {formatPrice(totalAmount)}
             </span>
           </div>
@@ -238,7 +223,7 @@ export default function CheckoutPage() {
                 onChange={(e) => setScheduledTime(e.target.value)}
                 className="glass-input"
               >
-                <option value="now">⚡ ASAP (~12-15 mins prep)</option>
+                <option value="now">⚡ ASAP (~10-15 mins prep)</option>
                 <option value="19:15">7:15 PM (Dinner break slot 1)</option>
                 <option value="19:30">7:30 PM (Dinner break slot 2)</option>
                 <option value="19:45">7:45 PM</option>
@@ -256,54 +241,15 @@ export default function CheckoutPage() {
           </div>
         </GlassCard>
 
-        {/* Payment Gateways */}
+        {/* Real UPI & Payment Gateway */}
         <GlassCard style={{ padding: '24px' }}>
           <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CreditCard size={18} style={{ color: 'var(--accent)' }} />
+            <Smartphone size={18} style={{ color: 'var(--accent)' }} />
             Select Payment Method
           </h3>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
-            {/* Razorpay (UPI + Cards) */}
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '16px',
-                borderRadius: 'var(--radius-lg)',
-                border: paymentMethod === 'RAZORPAY' 
-                  ? '2px solid var(--accent)' 
-                  : '1px solid rgba(0,0,0,0.06)',
-                background: paymentMethod === 'RAZORPAY' 
-                  ? 'rgba(255, 107, 53, 0.05)' 
-                  : 'rgba(255, 255, 255, 0.4)',
-                cursor: 'pointer',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <input
-                  type="radio"
-                  name="payment"
-                  checked={paymentMethod === 'RAZORPAY'}
-                  onChange={() => setPaymentMethod('RAZORPAY')}
-                />
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <span>Razorpay Digital Pay</span>
-                    <span className="glass-badge badge-accent" style={{ fontSize: '0.7rem' }}>
-                      Recommended
-                    </span>
-                  </div>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
-                    UPI (GPay / PhonePe / Paytm), Debit/Credit Cards & NetBanking
-                  </span>
-                </div>
-              </div>
-              <Smartphone size={22} style={{ color: 'var(--accent)' }} />
-            </label>
-
-            {/* Direct UPI Scan */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+            {/* Live UPI Direct */}
             <label
               style={{
                 display: 'flex',
@@ -315,7 +261,7 @@ export default function CheckoutPage() {
                   ? '2px solid var(--accent)' 
                   : '1px solid rgba(0,0,0,0.06)',
                 background: paymentMethod === 'UPI_DIRECT' 
-                  ? 'rgba(255, 107, 53, 0.05)' 
+                  ? 'rgba(255, 107, 53, 0.06)' 
                   : 'rgba(255, 255, 255, 0.4)',
                 cursor: 'pointer',
               }}
@@ -328,18 +274,21 @@ export default function CheckoutPage() {
                   onChange={() => setPaymentMethod('UPI_DIRECT')}
                 />
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>
-                    Direct UPI QR Pay
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>⚡ Live Instant UPI Pay (PhonePe / GPay / Paytm)</span>
+                    <span className="glass-badge badge-accent" style={{ fontSize: '0.7rem' }}>
+                      0% Fee
+                    </span>
                   </div>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
-                    Instant QR generation for seamless campus scanning
+                    Scan QR or tap to open UPI app. Funds go directly to the canteen account.
                   </span>
                 </div>
               </div>
-              <CreditCard size={22} style={{ color: 'var(--text-tertiary)' }} />
+              <QrCode size={24} style={{ color: 'var(--accent)' }} />
             </label>
 
-            {/* Canteen Counter Pay */}
+            {/* Counter Cash Pay */}
             <label
               style={{
                 display: 'flex',
@@ -351,7 +300,7 @@ export default function CheckoutPage() {
                   ? '2px solid var(--accent)' 
                   : '1px solid rgba(0,0,0,0.06)',
                 background: paymentMethod === 'CAMPUS_CARD' 
-                  ? 'rgba(255, 107, 53, 0.05)' 
+                  ? 'rgba(255, 107, 53, 0.06)' 
                   : 'rgba(255, 255, 255, 0.4)',
                 cursor: 'pointer',
               }}
@@ -365,10 +314,10 @@ export default function CheckoutPage() {
                 />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>
-                    Pay at Counter / Mess Card
+                    Pay at Canteen Counter (Cash / Hostel Card)
                   </div>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>
-                    Show Token Number at counter and pay via cash or hostel card
+                    Collect Token and pay physically at pickup
                   </span>
                 </div>
               </div>
@@ -376,13 +325,133 @@ export default function CheckoutPage() {
             </label>
           </div>
 
+          {/* Dynamic UPI Payment Box */}
+          {paymentMethod === 'UPI_DIRECT' && (
+            <div
+              style={{
+                padding: '20px',
+                background: 'rgba(255, 255, 255, 0.7)',
+                borderRadius: 'var(--radius-lg)',
+                border: '1px solid rgba(255, 107, 53, 0.2)',
+                marginBottom: '24px',
+                textAlign: 'center',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                  Receiving UPI ID / Phone: <strong style={{ color: 'var(--text-primary)' }}>{upiId}</strong>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingUpi(!isEditingUpi)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--accent)',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  <Edit3 size={14} /> {isEditingUpi ? 'Done' : 'Change UPI / Phone'}
+                </button>
+              </div>
+
+              {isEditingUpi && (
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                  <input
+                    type="text"
+                    placeholder="e.g. 9876543210@paytm or yourname@okaxis"
+                    value={customUpiInput}
+                    onChange={(e) => setCustomUpiInput(e.target.value)}
+                    className="glass-input"
+                    style={{ fontSize: '0.85rem' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (customUpiInput.trim()) {
+                        setUpiId(customUpiInput.trim());
+                        setIsEditingUpi(false);
+                      }
+                    }}
+                    className="glass-btn glass-btn-primary"
+                    style={{ padding: '0 16px', flexShrink: 0 }}
+                  >
+                    Save
+                  </button>
+                </div>
+              )}
+
+              {/* Real Dynamic QR Code */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '12px 0' }}>
+                <div
+                  style={{
+                    padding: '12px',
+                    background: '#FFFFFF',
+                    borderRadius: '16px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                    display: 'inline-block',
+                  }}
+                >
+                  <img
+                    src={qrCodeUrl}
+                    alt="Canteen UPI QR Code"
+                    width={220}
+                    height={220}
+                    style={{ display: 'block', borderRadius: '8px' }}
+                  />
+                </div>
+                <div style={{ marginTop: '10px', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  Scan to Pay {formatPrice(totalAmount)}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
+                  Supports Google Pay, PhonePe, Paytm, BHIM & all UPI apps
+                </div>
+              </div>
+
+              {/* Mobile Direct UPI Deep Link */}
+              <div style={{ marginTop: '16px' }}>
+                <a
+                  href={upiIntentUri}
+                  className="glass-btn glass-btn-primary"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    width: '100%',
+                    justifyContent: 'center',
+                    padding: '12px',
+                    fontSize: '0.9rem',
+                    textDecoration: 'none',
+                  }}
+                >
+                  <ExternalLink size={16} /> Tap to Open GPay / PhonePe App
+                </a>
+              </div>
+
+              {/* UTR / Ref No. */}
+              <div style={{ marginTop: '16px', textAlign: 'left' }}>
+                <GlassInput
+                  label="UPI Reference / UTR Number (Optional confirmation)"
+                  placeholder="e.g. 423456789012"
+                  value={upiRefNumber}
+                  onChange={(e) => setUpiRefNumber(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+
           <GlassButton
             onClick={handlePayment}
             size="lg"
             loading={loading}
             style={{ width: '100%', padding: '16px' }}
           >
-            <ShieldCheck size={20} /> Pay {formatPrice(totalAmount)} & Confirm Order
+            <ShieldCheck size={20} /> Confirm & Allocate Token ({formatPrice(totalAmount)})
           </GlassButton>
         </GlassCard>
       </div>

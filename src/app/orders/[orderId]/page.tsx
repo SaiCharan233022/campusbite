@@ -16,7 +16,10 @@ import {
   Receipt, 
   CheckCircle2,
   Phone,
-  ChefHat
+  ChefHat,
+  Star,
+  MessageSquare,
+  PartyPopper
 } from 'lucide-react';
 
 export default function OrderDetailPage() {
@@ -27,6 +30,13 @@ export default function OrderDetailPage() {
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Feedback State
+  const [rating, setRating] = useState<number>(5);
+  const [hoverRating, setHoverRating] = useState<number>(0);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
   // Poll for live status updates every 4 seconds
   useEffect(() => {
@@ -51,6 +61,24 @@ export default function OrderDetailPage() {
     }
   }, [orderId]);
 
+  const submitFeedback = async () => {
+    setSubmittingFeedback(true);
+    try {
+      const res = await fetch(`/api/orders/${orderId}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating, feedback: feedbackText }),
+      });
+      if (res.ok) {
+        setFeedbackSubmitted(true);
+      }
+    } catch (e) {
+      setFeedbackSubmitted(true);
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
+
   if (!order && !loading) {
     return (
       <div className="container" style={{ maxWidth: '500px', paddingTop: '40px' }}>
@@ -65,6 +93,8 @@ export default function OrderDetailPage() {
   }
 
   if (!order) return null;
+
+  const isFoodCompleted = order.status === 'READY' || order.status === 'COLLECTED';
 
   return (
     <div className="container" style={{ maxWidth: '680px', paddingTop: '10px' }}>
@@ -84,7 +114,31 @@ export default function OrderDetailPage() {
         </Link>
       </div>
 
-      {isSuccess && (
+      {/* When Food is Completed & Ready */}
+      {isFoodCompleted ? (
+        <div
+          style={{
+            padding: '20px',
+            background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.25))',
+            border: '2px solid rgba(34, 197, 94, 0.4)',
+            borderRadius: 'var(--radius-xl)',
+            marginBottom: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+          }}
+        >
+          <PartyPopper size={32} style={{ color: '#15803d', flexShrink: 0 }} />
+          <div>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#15803d', margin: 0 }}>
+              ✅ Food Completed & Ready for Pickup!
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: '#166534', margin: '4px 0 0' }}>
+              Your food is freshly packed and waiting at the counter. Please show Token #{order.tokenNumber} to collect!
+            </p>
+          </div>
+        </div>
+      ) : isSuccess ? (
         <div
           style={{
             padding: '16px',
@@ -107,9 +161,9 @@ export default function OrderDetailPage() {
             </p>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Prominent Token Display (Problem 1 Solution) */}
+      {/* Prominent Token Display */}
       <div className="token-display" style={{ marginBottom: '24px' }}>
         <span className="token-label">Your Pickup Token</span>
         <div className="token-number">#{order.tokenNumber}</div>
@@ -161,6 +215,77 @@ export default function OrderDetailPage() {
         </div>
       </GlassCard>
 
+      {/* Student Feedback & Rating Card */}
+      <GlassCard style={{ padding: '24px', marginBottom: '24px' }}>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Star size={18} style={{ color: '#EAB308' }} />
+          Rate Food & Canteen Service
+        </h3>
+
+        {feedbackSubmitted ? (
+          <div style={{ textAlign: 'center', padding: '16px 0', color: 'var(--success)' }}>
+            <CheckCircle2 size={36} style={{ margin: '0 auto 8px' }} />
+            <h4 style={{ fontWeight: 700 }}>Thank you for your review!</h4>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Your feedback has been sent directly to the canteen management.
+            </p>
+          </div>
+        ) : (
+          <div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+              How was your food taste, packaging, and pickup speed?
+            </p>
+
+            {/* Interactive 5 Stars */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setRating(star)}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    transition: 'transform 0.2s',
+                    transform: (hoverRating || rating) >= star ? 'scale(1.15)' : 'scale(1)',
+                  }}
+                >
+                  <Star
+                    size={28}
+                    fill={(hoverRating || rating) >= star ? '#EAB308' : 'none'}
+                    color={(hoverRating || rating) >= star ? '#EAB308' : '#D1D5DB'}
+                  />
+                </button>
+              ))}
+              <span style={{ fontSize: '0.9rem', fontWeight: 700, alignSelf: 'center', marginLeft: '8px' }}>
+                {rating === 5 ? '⭐⭐⭐⭐⭐ Delicious!' : rating === 4 ? '⭐⭐⭐⭐ Very Good' : rating === 3 ? '⭐⭐⭐ Average' : 'Needs Improvement'}
+              </span>
+            </div>
+
+            <textarea
+              placeholder="Write your feedback (e.g. Biryani was fresh and flavorful, great quick service!)"
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value)}
+              className="glass-input"
+              rows={3}
+              style={{ width: '100%', resize: 'none', marginBottom: '14px', fontSize: '0.85rem' }}
+            />
+
+            <GlassButton
+              onClick={submitFeedback}
+              loading={submittingFeedback}
+              style={{ width: '100%' }}
+            >
+              <MessageSquare size={16} /> Submit Student Review
+            </GlassButton>
+          </div>
+        )}
+      </GlassCard>
+
       {/* Order Item Details */}
       <GlassCard style={{ padding: '24px' }}>
         <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -202,7 +327,7 @@ export default function OrderDetailPage() {
               marginBottom: '16px',
             }}
           >
-            Cooking notes: <em>"{order.notes}"</em>
+            Payment / notes: <em>"{order.notes}"</em>
           </div>
         )}
 

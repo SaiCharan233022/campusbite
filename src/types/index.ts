@@ -41,6 +41,7 @@ export interface Canteen {
   isActive: boolean;
   openTime: string;
   closeTime: string;
+  upiId?: string;
   menuItems?: MenuItem[];
 }
 
@@ -82,6 +83,9 @@ export interface Order {
   scheduledFor?: string | null;
   estimatedReady?: string | null;
   notes?: string | null;
+  rating?: number | null;
+  feedback?: string | null;
+  upiRef?: string | null;
   userId: string;
   user?: User;
   canteenId: string;

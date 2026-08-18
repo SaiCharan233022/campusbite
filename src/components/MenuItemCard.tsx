@@ -4,7 +4,7 @@ import React from 'react';
 import { MenuItem } from '@/types';
 import { useCart } from '@/hooks/useCart';
 import { formatPrice } from '@/lib/utils';
-import { Plus, Minus, Clock } from 'lucide-react';
+import { Plus, Minus, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import { GlassBadge } from './ui/GlassBadge';
 
 interface MenuItemCardProps {
@@ -17,7 +17,6 @@ export function MenuItemCard({ item }: MenuItemCardProps) {
   const cartEntry = cart.find((ci) => ci.item.id === item.id);
   const quantity = cartEntry?.quantity || 0;
 
-  // Placeholder imagery with nice category colors
   const defaultImages: Record<string, string> = {
     BREAKFAST: '🥞',
     LUNCH: '🍛',
@@ -67,7 +66,7 @@ export function MenuItemCard({ item }: MenuItemCardProps) {
         </div>
 
         {/* Badges / Meta */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
           <span
             style={{
               display: 'inline-flex',
@@ -80,8 +79,38 @@ export function MenuItemCard({ item }: MenuItemCardProps) {
             <Clock size={12} />
             {item.prepTime} mins
           </span>
-          {!item.isAvailable && (
-            <GlassBadge variant="unavailable">Sold Out</GlassBadge>
+          {item.isAvailable ? (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px',
+                fontSize: '0.7rem',
+                color: '#16a34a',
+                fontWeight: 600,
+                background: 'rgba(34, 197, 94, 0.1)',
+                padding: '2px 6px',
+                borderRadius: '4px',
+              }}
+            >
+              <CheckCircle2 size={11} /> Ready Now
+            </span>
+          ) : (
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '3px',
+                fontSize: '0.7rem',
+                color: '#dc2626',
+                fontWeight: 600,
+                background: 'rgba(220, 38, 38, 0.1)',
+                padding: '2px 6px',
+                borderRadius: '4px',
+              }}
+            >
+              <XCircle size={11} /> Completed / Sold Out
+            </span>
           )}
         </div>
 
@@ -121,16 +150,16 @@ export function MenuItemCard({ item }: MenuItemCardProps) {
               disabled
               style={{
                 padding: '6px 14px',
-                background: 'var(--bg-tertiary)',
-                color: 'var(--text-tertiary)',
+                background: 'rgba(220, 38, 38, 0.08)',
+                color: '#dc2626',
                 borderRadius: 'var(--radius-sm)',
                 fontSize: '0.75rem',
-                fontWeight: 600,
-                border: 'none',
+                fontWeight: 700,
+                border: '1px solid rgba(220, 38, 38, 0.2)',
                 cursor: 'not-allowed',
               }}
             >
-              Unavailable
+              🔴 Sold Out
             </button>
           )}
         </div>
