@@ -361,28 +361,76 @@ export default function CheckoutPage() {
               </div>
 
               {isEditingUpi && (
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-                  <input
-                    type="text"
-                    placeholder="e.g. 9876543210@paytm or yourname@okaxis"
-                    value={customUpiInput}
-                    onChange={(e) => setCustomUpiInput(e.target.value)}
-                    className="glass-input"
-                    style={{ fontSize: '0.85rem' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (customUpiInput.trim()) {
-                        setUpiId(customUpiInput.trim());
-                        setIsEditingUpi(false);
-                      }
-                    }}
-                    className="glass-btn glass-btn-primary"
-                    style={{ padding: '0 16px', flexShrink: 0 }}
-                  >
-                    Save
-                  </button>
+                <div style={{ marginBottom: '16px', textAlign: 'left' }}>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                    <input
+                      type="text"
+                      placeholder="e.g. 9876543210@ybl or yourname@okaxis"
+                      value={customUpiInput}
+                      onChange={(e) => setCustomUpiInput(e.target.value)}
+                      className="glass-input"
+                      style={{ fontSize: '0.85rem' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        let finalId = customUpiInput.trim();
+                        // If user entered only 10 digit number, append @ybl or @paytm
+                        if (/^\d{10}$/.test(finalId)) {
+                          finalId = `${finalId}@ybl`;
+                        }
+                        if (finalId) {
+                          setUpiId(finalId);
+                          setIsEditingUpi(false);
+                        }
+                      }}
+                      className="glass-btn glass-btn-primary"
+                      style={{ padding: '0 16px', flexShrink: 0 }}
+                    >
+                      Save
+                    </button>
+                  </div>
+
+                  {/* Quick Handle Suggestions */}
+                  {/^\d{10}$/.test(customUpiInput.trim()) && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      <span style={{ fontWeight: 600 }}>Tap your payment app:</span>
+                      <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => setCustomUpiInput(`${customUpiInput.trim()}@ybl`)}
+                          className="glass-badge badge-accent"
+                          style={{ cursor: 'pointer', fontSize: '0.75rem', padding: '4px 8px' }}
+                        >
+                          📱 PhonePe (@ybl)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCustomUpiInput(`${customUpiInput.trim()}@paytm`)}
+                          className="glass-badge"
+                          style={{ cursor: 'pointer', fontSize: '0.75rem', padding: '4px 8px', background: 'rgba(0,0,0,0.06)' }}
+                        >
+                          💳 Paytm (@paytm)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCustomUpiInput(`${customUpiInput.trim()}@okaxis`)}
+                          className="glass-badge"
+                          style={{ cursor: 'pointer', fontSize: '0.75rem', padding: '4px 8px', background: 'rgba(0,0,0,0.06)' }}
+                        >
+                          🇬 Google Pay (@okaxis)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCustomUpiInput(`${customUpiInput.trim()}@okhdfcbank`)}
+                          className="glass-badge"
+                          style={{ cursor: 'pointer', fontSize: '0.75rem', padding: '4px 8px', background: 'rgba(0,0,0,0.06)' }}
+                        >
+                          🏦 GPay HDFC (@okhdfcbank)
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
